@@ -2,14 +2,43 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.BufferedInputStream;
+import com.google.gson.Gson; //This was a 3rd party package and I had to Configure > Convert to Maven Project and then modify the pom.xml to include it
+import java.util.Properties;
 
-//This was a 3rd party package and I had to Configure > Convert to Maven Project and then modify the pom.xml to include it
-import com.google.gson.Gson;
+public class sunriseSunsetBackend 
+{
+	//Config class. In the code we can use Config.getApiKey(); to return the value set in config.properties for nasa_api_key
+	public static class Config 
+	{
+	    private static final String PROP_FILE = "/config.properties";
 
-public class sunriseSunsetBackend {
-
-	//Exact same as how I would do this in C#
-    public static class ApiResponse 
+	    public static String getApiKey() 
+	    {
+	        Properties prop = new Properties();
+	        try (InputStream inputStream = Config.class.getResourceAsStream(PROP_FILE)) 
+	        {
+	            if (inputStream == null) {
+	                System.out.println("Sorry, unable to find config.properties");
+	                return null;
+	            }
+	            
+	            prop.load(inputStream);
+	            
+	            return prop.getProperty("nasa_api_key");
+	        }
+	        catch (Exception e)
+	        {
+	            e.printStackTrace();
+	            return null;
+	        }
+	    }
+	}
+	
+	//Sunrise Sunset API HTTP response
+    public static class SunApiResponse 
     {
         public Results results;
         public String status;
@@ -30,24 +59,32 @@ public class sunriseSunsetBackend {
             public int utc_offset;
         }
     }
-    
-    //Exact same as C#. This would be exposed to the user. Let's see how to expose HTTP endpoints? Maybe Docker too. 
+     
 	public static void main(String[] args) 
 	{
-		System.out.println("Starting Sunrise Sunset Backend v1.0.0");
+		System.out.println("Starting Sunrise Sunset Backend v1.0.1");
 		
         double latitude = 38.907192;
         double longitude = -77.036873;
+        String date = "2018-01-01"; // For NASA Satelite
         
-        //How to handle this error?
-        ApiResponse response = makeApiRequest(latitude, longitude);
+        //Make the Sunrise Sunset request
+        SunApiResponse sunsetSunriseResponse = makeApiRequest(latitude, longitude);
+        System.out.println("Sunrise: " + sunsetSunriseResponse.results.sunrise);
+        System.out.println("Sunset: " + sunsetSunriseResponse.results.sunset);
         
-        System.out.println("Sunrise: " + response.results.sunrise);
-        System.out.println("Sunset: " + response.results.sunset);
+        //Make the Satelite image request of Earth
+        boolean success = downloadSateliteImage(latitude, longitude, date);
+        if (success) {
+        	String currentDirectory = System.getProperty("user.dir");
+            System.out.println("NASA Landsat Satelite Image successfully downloaded to " + currentDirectory);
+        } else {
+            System.out.println("Failed to download the image.");
+        }
 	}
 	
-	//Backend Service
-    public static ApiResponse makeApiRequest(double latitude, double longitude) 
+	//Service for Sunrise Sunset API
+    public static SunApiResponse makeApiRequest(double latitude, double longitude) 
     {
         try 
         {
@@ -73,7 +110,7 @@ public class sunriseSunsetBackend {
             Gson gson = new Gson();
 
             //This is important since regardless of how I read the JSON data (NoSQL database or HTTP API) I will need to turn it into a object
-            ApiResponse response = gson.fromJson(content.toString(), ApiResponse.class);
+            SunApiResponse response = gson.fromJson(content.toString(), SunApiResponse.class);
             
             return response;
         }
@@ -83,5 +120,49 @@ public class sunriseSunsetBackend {
             return null;
         }
     }
+    
+    //Service for NASA Landsat imagery
+    public static boolean downloadSateliteImage(double latitude, double longitude, String date) 
+    {
+        try 
+        {    
+        	//Get the API key from a config file
+        	String apiKey = Config.getApiKey();
+            if (apiKey == null) {
+                System.out.println("NASA API Key not set in environment variables.");
+                return false;
+            }
+            
+            //Build the URL object with your API key
+            String urlStr = String.format("https://api.nasa.gov/planetary/earth/imagery?lon=%f&lat=%f&date=%s&dim=0.10&api_key=%s",
+                longitude, latitude, date, apiKey
+            );
+            URL url = new URL(urlStr);
 
+            //Open a connection to the URL and set up to read the image
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+
+            //Read the image data
+            InputStream in = new BufferedInputStream(con.getInputStream());
+            FileOutputStream out = new FileOutputStream("downloaded_image.png");
+
+            //Write the image data to a file
+            byte[] buffer = new byte[1024];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                out.write(buffer, 0, count);
+            }
+            out.close();
+            in.close();
+            con.disconnect();
+
+            return true;
+        }
+        catch (Exception e) 
+        {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
