@@ -12,4 +12,13 @@ This Java code defines a simple backend service called `sunriseSunsetBackend`, w
 
 4. **NASA Satelite Image** :: I then added a NASA API so we can download a Satelite image
 
+**Docker**
+docker build -t sunrise-sunset-backend .
+ 
+**SprintBoot**
+mvn spring-boot:run
+This is how we make the Controllers just like in .NET WebAPI
+
+
+**Example**
 ![image](https://github.com/stefonalfaro/Java-Sunrise-Sunset-Backend-Service/assets/45152948/5011cc8c-1213-4371-934b-47d7b0561743)

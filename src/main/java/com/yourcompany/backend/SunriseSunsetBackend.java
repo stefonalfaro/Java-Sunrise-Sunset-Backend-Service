@@ -1,3 +1,5 @@
+package com.yourcompany.backend;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -7,38 +9,34 @@ import java.io.InputStream;
 import java.io.BufferedInputStream;
 import com.google.gson.Gson; //This was a 3rd party package and I had to Configure > Convert to Maven Project and then modify the pom.xml to include it
 import java.util.Properties;
+import java.io.*;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-public class sunriseSunsetBackend 
+@SpringBootApplication
+public class SunriseSunsetBackend 
 {
-	//Config class. In the code we can use Config.getApiKey(); to return the value set in config.properties for nasa_api_key
-	public static class Config 
+	public static void main(String[] args) 
 	{
-	    private static final String PROP_FILE = "/config.properties";
-
-	    public static String getApiKey() 
-	    {
-	        Properties prop = new Properties();
-	        try (InputStream inputStream = Config.class.getResourceAsStream(PROP_FILE)) 
-	        {
-	            if (inputStream == null) {
-	                System.out.println("Sorry, unable to find config.properties");
-	                return null;
-	            }
-	            
-	            prop.load(inputStream);
-	            
-	            return prop.getProperty("nasa_api_key");
-	        }
-	        catch (Exception e)
-	        {
-	            e.printStackTrace();
-	            return null;
-	        }
-	    }
+		SpringApplication.run(SunriseSunsetBackend.class, args);
+		
+		System.out.println("Starting Sunrise Sunset Backend v1.0.1");
 	}
-	
-	//Sunrise Sunset API HTTP response
-    public static class SunApiResponse 
+}
+
+@RestController
+class SunriseSunsetController 
+{	
+    @GetMapping("/sunriseSunset")
+    public SunApiResponse getSunriseSunset(@RequestParam double latitude, @RequestParam double longitude) {
+        return getSunriseSunsetResponse(latitude, longitude);
+    }
+    
+    //Sunrise Sunset API HTTP response
+    public class SunApiResponse 
     {
         public Results results;
         public String status;
@@ -59,32 +57,9 @@ public class sunriseSunsetBackend
             public int utc_offset;
         }
     }
-     
-	public static void main(String[] args) 
-	{
-		System.out.println("Starting Sunrise Sunset Backend v1.0.1");
-		
-        double latitude = 38.907192;
-        double longitude = -77.036873;
-        String date = "2018-01-01"; // For NASA Satelite
-        
-        //Make the Sunrise Sunset request
-        SunApiResponse sunsetSunriseResponse = makeApiRequest(latitude, longitude);
-        System.out.println("Sunrise: " + sunsetSunriseResponse.results.sunrise);
-        System.out.println("Sunset: " + sunsetSunriseResponse.results.sunset);
-        
-        //Make the Satelite image request of Earth
-        boolean success = downloadSateliteImage(latitude, longitude, date);
-        if (success) {
-        	String currentDirectory = System.getProperty("user.dir");
-            System.out.println("NASA Landsat Satelite Image successfully downloaded to " + currentDirectory);
-        } else {
-            System.out.println("Failed to download the image.");
-        }
-	}
-	
+    
 	//Service for Sunrise Sunset API
-    public static SunApiResponse makeApiRequest(double latitude, double longitude) 
+    public static SunApiResponse getSunriseSunsetResponse(double latitude, double longitude) 
     {
         try 
         {
@@ -120,7 +95,44 @@ public class sunriseSunsetBackend
             return null;
         }
     }
+}
+
+@RestController
+class SatelitteImageController 
+{
+    @GetMapping("/satelliteImage")
+    public String getSatelliteImage(@RequestParam double latitude, @RequestParam double longitude, @RequestParam String date) {
+        boolean success = downloadSateliteImage(latitude, longitude, date);
+        return success ? "Image Downloaded Successfully" : "Failed to Download Image";
+    }
     
+	//Config class. In the code we can use Config.getApiKey(); to return the value set in config.properties for nasa_api_key
+	public static class Config 
+	{
+	    private static final String PROP_FILE = "/config.properties";
+
+	    public static String getApiKey() 
+	    {
+	        Properties prop = new Properties();
+	        try (InputStream inputStream = Config.class.getResourceAsStream(PROP_FILE)) 
+	        {
+	            if (inputStream == null) {
+	                System.out.println("Sorry, unable to find config.properties");
+	                return null;
+	            }
+	            
+	            prop.load(inputStream);
+	            
+	            return prop.getProperty("nasa_api_key");
+	        }
+	        catch (Exception e)
+	        {
+	            e.printStackTrace();
+	            return null;
+	        }
+	    }
+	}
+	
     //Service for NASA Landsat imagery
     public static boolean downloadSateliteImage(double latitude, double longitude, String date) 
     {
