@@ -13,7 +13,7 @@ curl -X GET "http://localhost:8080/sunriseSunset?latitude=17.0&longitude=-88.0" 
 curl -o satellite_image.png "http://localhost:8080/satelliteImage?latitude=17.26545&longitude=-88.9946&date=2018-01-01"
 
 
-**Docker**
+**Docker** (stefonalfaro/sunrise-sunset-backend)
 
 docker build -t sunrise-sunset-backend .
  
