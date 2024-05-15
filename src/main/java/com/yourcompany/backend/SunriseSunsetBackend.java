@@ -15,6 +15,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @SpringBootApplication
 public class SunriseSunsetBackend 
@@ -100,10 +103,21 @@ class SunriseSunsetController
 @RestController
 class SatelitteImageController 
 {
-    @GetMapping("/satelliteImage")
-    public String getSatelliteImage(@RequestParam double latitude, @RequestParam double longitude, @RequestParam String date) {
-        boolean success = downloadSateliteImage(latitude, longitude, date);
-        return success ? "Image Downloaded Successfully" : "Failed to Download Image";
+	@GetMapping("/satelliteImage")
+    public ResponseEntity<byte[]> getSatelliteImage(@RequestParam double latitude, @RequestParam double longitude, @RequestParam String date) 
+	{
+        byte[] image = downloadSatelliteImage(latitude, longitude, date);
+        if (image != null)
+        {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.IMAGE_PNG);
+            headers.setContentLength(image.length);
+            return new ResponseEntity<>(image, headers, HttpStatus.OK);
+        }
+        else
+        {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
     
 	//Config class. In the code we can use Config.getApiKey(); to return the value set in config.properties for nasa_api_key
@@ -134,47 +148,45 @@ class SatelitteImageController
 	}
 	
     //Service for NASA Landsat imagery
-    public static boolean downloadSateliteImage(double latitude, double longitude, String date) 
+    public static byte[] downloadSatelliteImage(double latitude, double longitude, String date)
     {
-        try 
-        {    
-        	//Get the API key from a config file
-        	String apiKey = Config.getApiKey();
+        try
+        {
+            // Get the API key from a config file
+            String apiKey = Config.getApiKey();
             if (apiKey == null) {
                 System.out.println("NASA API Key not set in environment variables.");
-                return false;
+                return null;
             }
-            
-            //Build the URL object with your API key
-            String urlStr = String.format("https://api.nasa.gov/planetary/earth/imagery?lon=%f&lat=%f&date=%s&dim=0.10&api_key=%s",
-                longitude, latitude, date, apiKey
-            );
+
+            // Build the URL object with your API key
+            String urlStr = String.format("https://api.nasa.gov/planetary/earth/imagery?lon=%f&lat=%f&date=%s&dim=0.45&api_key=%s",
+                    longitude, latitude, date, apiKey);
             URL url = new URL(urlStr);
 
-            //Open a connection to the URL and set up to read the image
+            // Open a connection to the URL and set up to read the image
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
 
-            //Read the image data
-            InputStream in = new BufferedInputStream(con.getInputStream());
-            FileOutputStream out = new FileOutputStream("downloaded_image.png");
-
-            //Write the image data to a file
-            byte[] buffer = new byte[1024];
-            int count;
-            while ((count = in.read(buffer)) != -1) {
-                out.write(buffer, 0, count);
+            // Check the response code
+            int responseCode = con.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                System.out.println("HTTP error code: " + responseCode);
+                return null;
             }
-            out.close();
+
+            // Read the image data
+            InputStream in = new BufferedInputStream(con.getInputStream());
+            byte[] image = in.readAllBytes();
             in.close();
             con.disconnect();
 
-            return true;
+            return image;
         }
-        catch (Exception e) 
+        catch (Exception e)
         {
             e.printStackTrace();
-            return false;
+            return null;
         }
     }
 }
