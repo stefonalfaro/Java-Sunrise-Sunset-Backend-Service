@@ -2,8 +2,6 @@
 Java application with the SpringBoot framework for REST HTTP APIs. Built into a Docker image and then deployed to Google Cloud Run. Final result is https://sunrise-sunset-backend-dvknejaaha-uc.a.run.app/sunriseSunset?latitude=17.0&longitude=-88.0
 
 
-This application provides endpoints to retrieve sunrise and sunset times for a given location and to download satellite images from NASA for a specified location and date.
-
 ## Endpoints
 
 ### Get Sunrise and Sunset for Location
@@ -67,6 +65,12 @@ Run the application using Maven with Spring Boot.
 ```sh
 mvn spring-boot:run
 ```
+
+### Google Cloud Run (Free Tier)
+    2 million requests per month
+    360,000 GB-seconds of memory, 180,000 vCPU-seconds of compute time
+    1 GB of outbound data transfer from North America per month
+
 
 ## Development Notes
 
